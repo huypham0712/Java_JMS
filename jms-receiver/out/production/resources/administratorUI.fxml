@@ -26,12 +26,12 @@
     </ListView>
 
     <HBox spacing="10" GridPane.columnIndex="0" GridPane.columnSpan="2" GridPane.rowIndex="2">
-        <TextField fx:id="tfMessage" prefHeight="61.0" prefWidth="504.0" text="some texts">
+        <TextField fx:id="tfMessage" prefHeight="61.0" prefWidth="504.0" promptText="Type your answer here...">
             <font>
                 <Font size="15.0" />
             </font>
         </TextField>
-        <Button fx:id="btnSend" onAction="#onButtonSendClick" prefHeight="61.0" prefWidth="88.0" text="Send">
+        <Button fx:id="btnSend" onAction="#onButtonAnswerClick" prefHeight="61.0" prefWidth="88.0" text="Send">
         </Button>
     </HBox>
    <columnConstraints>
