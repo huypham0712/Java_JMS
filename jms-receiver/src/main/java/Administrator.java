@@ -1,7 +1,6 @@
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -14,15 +13,14 @@ import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
 
-public class Administrator extends Application implements MessageListener{
-    private static List<String> questionList;
+public class Administrator extends Application {
+    //private static List<String> questionList;
+    private ObservableList<String> observableList;
     private final String DESTINATION_TYPE = "queue";
-    private final String RECEIVE_CHANNEL = "myFirstDestination";
-    private final String SEND_CHANNEL = "myFirstDestination";
+    private final String RECEIVE_CHANNEL = "askDestination";
+    private final String SEND_CHANNEL = "answerDestination";
     private MessageConsumer messageConsumer;
     private MessageProducer messageProducer;
     private Session session;
@@ -52,10 +50,12 @@ public class Administrator extends Application implements MessageListener{
         super.init();
         lvMessage = new ListView<>();
         tfMessage = new TextField();
-        questionList = new ArrayList<>();
-        //initService(RECEIVE_CHANNEL, DESTINATION_TYPE);
+        //questionList = new ArrayList<>();
+        observableList = FXCollections.observableArrayList();
+        lvMessage.setItems(observableList);
+        initService(RECEIVE_CHANNEL, DESTINATION_TYPE);
         getMessage(RECEIVE_CHANNEL);
-        updateLV();
+        //Platform.runLater(this::updateLV);
     }
 
     public static void main(String[] args) {
@@ -87,7 +87,7 @@ public class Administrator extends Application implements MessageListener{
 
     private void updateLV(){
         lvMessage.getItems().clear();
-        lvMessage.getItems().addAll(questionList);
+        lvMessage.setItems(observableList);
     }
 
     private void initService(String targetDestination, String destinationType){
@@ -105,6 +105,7 @@ public class Administrator extends Application implements MessageListener{
 
             // to connect to the JMS
             connection = connectionFactory.createConnection();
+
             // session for creating consumers
             session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
@@ -126,6 +127,9 @@ public class Administrator extends Application implements MessageListener{
             // create a text message
             Message msg = session.createTextMessage(message);
 
+            msg.setJMSMessageID("222");
+            System.out.println(msg.getJMSMessageID());
+
             // send the message
             messageProducer.send(msg);
 
@@ -142,24 +146,26 @@ public class Administrator extends Application implements MessageListener{
         try {
             initService(receiveDestination, DESTINATION_TYPE);
 
-            // for receiving messages
-            messageConsumer = session.createConsumer(destination);
-            messageConsumer.setMessageListener(this);
-
             // this is needed to start receiving messages
             connection.start();
+
+            // for receiving messages
+            messageConsumer = session.createConsumer(destination);
+            MessageListener listener = message -> {
+                try {
+                    observableList.add(((TextMessage)message).getText());
+                    System.out.println(((TextMessage) message).getText());
+                    updateLV();
+                } catch (JMSException e) {
+                    e.printStackTrace();
+                }
+            };
+
+            messageConsumer.setMessageListener(listener);
         } catch (JMSException e) {
             e.printStackTrace();
         }
     }
 
-    @Override
-    public void onMessage(Message message) {
-        try {
-            questionList.add(((TextMessage)message).getText());
-            updateLV();
-        } catch (JMSException e) {
-            e.printStackTrace();
-        }
-    }
+.
 }
