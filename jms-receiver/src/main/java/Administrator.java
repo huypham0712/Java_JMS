@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Properties;
 
 public class Administrator extends Application {
-    //private static List<String> questionList;
     private ObservableList<String> observableList = FXCollections.observableArrayList(new ArrayList<>());
     private final String DESTINATION_TYPE = "queue";
     private final String RECEIVE_CHANNEL = "askDestination";
@@ -55,7 +54,7 @@ public class Administrator extends Application {
                 @Override
                 public void onMessage(Message message) {
                     try {
-                        observableList.add("Server :" + ((TextMessage)message).getText());
+                        observableList.add("Server: " + ((TextMessage)message).getText());
                         Platform.runLater(new Runnable() {
                             @Override
                             public void run() {
@@ -100,6 +99,8 @@ public class Administrator extends Application {
                             }
                         }
                     });
+                } else {
+                    handleServiceError("Error", "Could not send the message to the server!!");
                 }
             }
         });
@@ -109,7 +110,6 @@ public class Administrator extends Application {
     @Override
     public void init() throws Exception {
         super.init();
-        initService(SEND_CHANNEL, DESTINATION_TYPE);
     }
 
     public static void main(String[] args) {

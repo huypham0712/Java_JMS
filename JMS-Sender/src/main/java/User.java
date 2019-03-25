@@ -1,5 +1,8 @@
 import javafx.application.Application;
-import javafx.fxml.FXML;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -7,6 +10,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
+import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 
 import javax.jms.*;
@@ -15,12 +19,10 @@ import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
-import java.util.UUID;
 
-public class User extends Application implements MessageListener {
-    private static List<String> questions;
+public class User extends Application {
+    private ObservableList<String> observableList = FXCollections.observableArrayList(new ArrayList<>());
     private final String DESTINATION_TYPE = "queue";
     private final String RECEIVE_CHANNEL = "answerDestination";
     private final String SEND_CHANNEL = "askDestination";
@@ -31,14 +33,11 @@ public class User extends Application implements MessageListener {
     private Destination destination;
     private Connection connection;
 
-    @FXML
-    public Button btnSend;
+    private Button btnSend;
 
-    @FXML
-    public TextField tfMessage;
+    private TextField tfMessage;
 
-    @FXML
-    public ListView lvMessage;
+    private ListView lvMessage;
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -46,50 +45,85 @@ public class User extends Application implements MessageListener {
         stage.setTitle("Sender");
         stage.setScene(new Scene(root, 640, 480));
         stage.setResizable(false);
+        btnSend = (Button) root.lookup("#btnSend");
+        tfMessage = (TextField) root.lookup("#tfMessage");
+        lvMessage = (ListView) root.lookup("#lvMessage");
+        initService(RECEIVE_CHANNEL, DESTINATION_TYPE);
+        try {
+            connection.start();
+
+            // for receiving messages
+            messageConsumer = session.createConsumer(destination);
+            MessageListener listener = new MessageListener() {
+                @Override
+                public void onMessage(Message message) {
+                    try {
+                        observableList.add("Server :" + ((TextMessage)message).getText());
+                        Platform.runLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                lvMessage.getItems().clear();
+                                for (String s : observableList) {
+                                    lvMessage.getItems().add(s);
+                                }
+                            }
+                        });
+                    } catch (Exception ex){
+                        ex.printStackTrace();
+                    }
+                }
+            };
+
+            messageConsumer.setMessageListener(listener);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        btnSend.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                String message = tfMessage.getText();
+
+                if (message.equals("")) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setContentText("Please enter your message!!");
+                    alert.show();
+                    return;
+                }
+
+                if (sendQuestion(message, SEND_CHANNEL)){
+                    tfMessage.clear();
+                    Platform.runLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            lvMessage.getItems().clear();
+                            for (String s : observableList) {
+                                lvMessage.getItems().add(s);
+                            }
+                        }
+                    });
+                } else {
+                    handleServiceError("Error", "Could not send the message to the server!!");
+                }
+            }
+        });
+
         stage.show();
     }
 
     @Override
     public void init() throws Exception {
         super.init();
-        btnSend = new Button();
-        tfMessage = new TextField();
-        lvMessage = new ListView();
-        questions = new ArrayList<>();
-        initService(RECEIVE_CHANNEL, DESTINATION_TYPE);
-        getAnswer(RECEIVE_CHANNEL);
     }
 
     public static void main(String[] args){
         launch(args);
     }
 
-    public void onButtonSendClick(javafx.event.ActionEvent actionEvent) {
-        String message = tfMessage.getText();
-
-        if (message.equals("")) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setContentText("Please enter your question!!");
-            alert.show();
-            return;
-        }
-
-        if (sendQuestion(message, SEND_CHANNEL)) {
-            tfMessage.clear();
-        } else {
-            handleServiceError("Service Error", "Could not send the message tot the service");
-        }
-    }
-
     private void handleServiceError(String errorTitle, String errorText){
         Alert error = new Alert(Alert.AlertType.ERROR);
         error.setTitle(errorTitle);
         error.setContentText(errorText);
-    }
-
-    private void updateLV(){
-        lvMessage.getItems().clear();
-        lvMessage.getItems().addAll(questions);
     }
 
     private void initService(String targetDestination, String destinationType){
@@ -135,39 +169,11 @@ public class User extends Application implements MessageListener {
             messageProducer.send(msg);
 
             //questionList.add(message);
-            updateLV();
+            observableList.add("You: " + message);
             return true;
         } catch (JMSException e) {
             e.printStackTrace();
             return false;
-        }
-    }
-
-    private void getAnswer(String receiveDestination) {
-        try {
-            initService(receiveDestination, DESTINATION_TYPE);
-
-            // for receiving messages
-            messageConsumer = session.createConsumer(destination);
-            messageConsumer.setMessageListener(this);
-
-
-            // this is needed to start receiving messages
-            connection.start();
-        } catch (JMSException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void onMessage(Message message) {
-        try {
-            questions.add(((TextMessage)message).getText());
-            requestId = message.getJMSMessageID();
-            System.out.println(requestId);
-            updateLV();
-        } catch (JMSException e) {
-            e.printStackTrace();
         }
     }
 }
