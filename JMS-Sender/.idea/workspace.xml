@@ -2,13 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="540ba5e8-eab0-42d8-8de6-ecb3207b3a73" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/User.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/User.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/UserService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jms-receiver/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../jms-receiver/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../jms-receiver/src/main/java/Administrator.java" beforeDir="false" afterPath="$PROJECT_DIR$/../jms-receiver/src/main/java/Administrator.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jms-receiver/src/main/java/Receiver.java" beforeDir="false" afterPath="$PROJECT_DIR$/../jms-receiver/src/main/java/Receiver.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../jms-receiver/src/main/java/Sender.java" beforeDir="false" afterPath="$PROJECT_DIR$/../jms-receiver/src/main/java/Sender.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../jms-receiver/src/main/resources/administratorUI.fxml" beforeDir="false" afterPath="$PROJECT_DIR$/../jms-receiver/src/main/resources/administratorUI.fxml" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <ignored path="$PROJECT_DIR$/.gradle/" />
@@ -59,8 +55,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/User.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="20">
-              <caret line="131" column="52" selection-start-line="131" selection-start-column="52" selection-end-line="131" selection-end-column="52" />
+            <state relative-caret-position="180">
+              <caret line="67" column="38" lean-forward="true" selection-end-line="173" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -70,12 +66,12 @@
       </file>
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/resources/userUI.fxml">
+          <provider editor-type-id="JavaFX-Scene-Builder" />
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="460">
               <caret line="23" column="27" selection-start-line="23" selection-start-column="27" selection-end-line="23" selection-end-column="27" />
             </state>
           </provider>
-          <provider editor-type-id="JavaFX-Scene-Builder" />
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
@@ -129,7 +125,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="PackagesPane" />
       <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
@@ -167,6 +162,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="PackagesPane" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -306,11 +302,12 @@
       <workItem from="1553287298127" duration="1718000" />
       <workItem from="1553330332905" duration="4204000" />
       <workItem from="1553347390446" duration="22000" />
+      <workItem from="1553514413841" duration="809000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="10783000" />
+    <option name="totallyTimeSpent" value="11592000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -325,7 +322,7 @@
     <frame x="-8" y="-8" width="1936" height="1066" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.12953092" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.13059701" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Designer" order="2" />
       <window_info id="UI Designer" order="3" />
@@ -446,8 +443,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/User.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="20">
-          <caret line="131" column="52" selection-start-line="131" selection-start-column="52" selection-end-line="131" selection-end-column="52" />
+        <state relative-caret-position="180">
+          <caret line="67" column="38" lean-forward="true" selection-end-line="173" />
           <folding>
             <element signature="imports" expanded="true" />
           </folding>
@@ -455,12 +452,12 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/resources/userUI.fxml">
+      <provider editor-type-id="JavaFX-Scene-Builder" />
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="460">
           <caret line="23" column="27" selection-start-line="23" selection-start-column="27" selection-end-line="23" selection-end-column="27" />
         </state>
       </provider>
-      <provider editor-type-id="JavaFX-Scene-Builder" />
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/UserService.java">
       <provider selected="true" editor-type-id="text-editor">
