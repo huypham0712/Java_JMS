@@ -1,5 +1,7 @@
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
@@ -12,13 +14,15 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
-
 import javax.jms.*;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public class User extends Application {
@@ -26,7 +30,6 @@ public class User extends Application {
     private final String DESTINATION_TYPE = "queue";
     private final String RECEIVE_CHANNEL = "answerDestination";
     private final String SEND_CHANNEL = "askDestination";
-    private String requestId;
     private MessageConsumer messageConsumer;
     private MessageProducer messageProducer;
     private Session session;
@@ -34,10 +37,10 @@ public class User extends Application {
     private Connection connection;
 
     private Button btnSend;
-
     private TextField tfMessage;
+    private ListView<String> lvMessage;
 
-    private ListView lvMessage;
+    private HashMap<String, String> hashMap = new HashMap<>();
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -47,8 +50,10 @@ public class User extends Application {
         stage.setResizable(false);
         btnSend = (Button) root.lookup("#btnSend");
         tfMessage = (TextField) root.lookup("#tfMessage");
-        lvMessage = (ListView) root.lookup("#lvMessage");
+        lvMessage = (ListView<String>) root.lookup("#lvMessage");
         initService(RECEIVE_CHANNEL, DESTINATION_TYPE);
+
+        // For listening to the message from the server
         try {
             connection.start();
 
@@ -58,7 +63,8 @@ public class User extends Application {
                 @Override
                 public void onMessage(Message message) {
                     try {
-                        observableList.add("Server :" + ((TextMessage)message).getText());
+                        observableList.add("Server: " + ((TextMessage)message).getText());
+                        hashMap.put(((TextMessage)message).getText(), message.getJMSCorrelationID());
                         Platform.runLater(new Runnable() {
                             @Override
                             public void run() {
@@ -79,17 +85,19 @@ public class User extends Application {
             ex.printStackTrace();
         }
 
+        // For sending message to the server
         btnSend.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
                 String message = tfMessage.getText();
+                String correlationId = lvMessage.getSelectionModel().getSelectedItem();
 
-                if (message.equals("")) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setContentText("Please enter your message!!");
-                    alert.show();
+                if (message.equals("") || correlationId == null || correlationId.equals("")) {
+                    handleServiceError("Error", "Please enter your message OR Select the message to reply!!");
                     return;
                 }
+
+                // Check in hashmap
 
                 if (sendQuestion(message, SEND_CHANNEL)){
                     tfMessage.clear();
@@ -108,6 +116,8 @@ public class User extends Application {
             }
         });
 
+
+
         stage.show();
     }
 
@@ -124,6 +134,7 @@ public class User extends Application {
         Alert error = new Alert(Alert.AlertType.ERROR);
         error.setTitle(errorTitle);
         error.setContentText(errorText);
+        error.show();
     }
 
     private void initService(String targetDestination, String destinationType){
@@ -152,8 +163,12 @@ public class User extends Application {
         }
     }
 
-    private boolean sendQuestion(String message, String sendDestination) {
+    private boolean sendQuestion(String message, String correlationId, String sendDestination) {
         try {
+            if (!hashMap.containsValue(correlationId)){
+                return false;
+            }
+
             initService(sendDestination, DESTINATION_TYPE);
 
             // for sending messages

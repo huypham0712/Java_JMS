@@ -17,6 +17,7 @@ import javax.naming.NamingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Properties;
+import java.util.UUID;
 
 public class Administrator extends Application {
     private ObservableList<String> observableList = FXCollections.observableArrayList(new ArrayList<>());
@@ -159,8 +160,8 @@ public class Administrator extends Application {
             // create a text message
             Message msg = session.createTextMessage(message);
 
-            msg.setJMSMessageID("222");
-            System.out.println(msg.getJMSMessageID());
+            msg.setJMSCorrelationID(UUID.randomUUID().toString());
+            System.out.println(msg.getJMSCorrelationID());
 
             // send the message
             messageProducer.send(msg);
