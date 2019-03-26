@@ -15,9 +15,7 @@ import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 
 public class Administrator extends Application {
     private ObservableList<String> observableList = FXCollections.observableArrayList(new ArrayList<>());
@@ -30,7 +28,7 @@ public class Administrator extends Application {
     private Destination destination;
     private Connection connection;
 
-
+    private Map<String, String> hashMap = new HashMap<>();
     private TextField tfMessage;
 
     private ListView<String> lvMessage;
@@ -55,16 +53,20 @@ public class Administrator extends Application {
                 @Override
                 public void onMessage(Message message) {
                     try {
-                        observableList.add("Server: " + ((TextMessage)message).getText());
-                        Platform.runLater(new Runnable() {
-                            @Override
-                            public void run() {
-                                lvMessage.getItems().clear();
-                                for (String s : observableList) {
-                                    lvMessage.getItems().add(s);
+                        if(message instanceof TextMessage){
+                            String messageDetail = ((TextMessage) message).getText();
+                            observableList.add("Question: " + messageDetail);
+                            hashMap.put("Question: " + messageDetail, message.getJMSMessageID());
+                            Platform.runLater(new Runnable() {
+                                @Override
+                                public void run() {
+                                    lvMessage.getItems().clear();
+                                    for (String s : observableList) {
+                                        lvMessage.getItems().add(s);
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     } catch (Exception ex){
                         ex.printStackTrace();
                     }
@@ -81,15 +83,26 @@ public class Administrator extends Application {
             @Override
             public void handle(MouseEvent event) {
                 String message = tfMessage.getText();
+                String question = lvMessage.getSelectionModel().getSelectedItem();
 
-                if (message.equals("")) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setContentText("Please enter your message!!");
-                    alert.show();
+                if (message.equals("") || question == null || question.equals("")) {
+                    handleServiceError("Error", "Please enter your message OR select the question you want to answer!!");
                     return;
                 }
 
-                if (replyToQuestion(message, SEND_CHANNEL)){
+                if (!hashMap.containsKey(question) || question.contains("| Answer: ")){
+                    handleServiceError("Error", "Could not answer to this question!!");
+                    return;
+                }
+
+                String correlationId = null;
+                for(Map.Entry entry : hashMap.entrySet()){
+                    if (entry.getKey().equals(question)){
+                        correlationId = (String) entry.getValue();
+                    }
+                }
+
+                if (replyToQuestion(message, correlationId, SEND_CHANNEL)){
                     tfMessage.clear();
                     Platform.runLater(new Runnable() {
                         @Override
@@ -121,6 +134,7 @@ public class Administrator extends Application {
         Alert error = new Alert(Alert.AlertType.ERROR);
         error.setTitle(errorTitle);
         error.setContentText(errorText);
+        error.show();
     }
 
     private void initService(String targetDestination, String destinationType) {
@@ -150,27 +164,45 @@ public class Administrator extends Application {
         }
     }
 
-    private boolean replyToQuestion(String message, String sendDestination) {
+    private boolean replyToQuestion(String message, String correlationId, String sendDestination) {
         try {
             initService(sendDestination, DESTINATION_TYPE);
 
             // for sending messages
-            messageProducer = session.createProducer(destination);
+            messageProducer = session.createProducer(null);
 
             // create a text message
             Message msg = session.createTextMessage(message);
 
-            msg.setJMSCorrelationID(UUID.randomUUID().toString());
-            System.out.println(msg.getJMSCorrelationID());
+            msg.setJMSCorrelationID(correlationId);
+            msg.setJMSReplyTo(destination);
 
             // send the message
-            messageProducer.send(msg);
+            messageProducer.send(msg.getJMSReplyTo(), msg);
 
-            observableList.add("You: " + message);
+            //observableList.add("You: " + message);
+
+            updateList(correlationId, message);
             return true;
         } catch (JMSException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    private void updateList(String correlationId, String answer) {
+        String key = null;
+
+        for (Map.Entry entry : hashMap.entrySet()){
+            if (entry.getValue().equals(correlationId)){
+                key = (String) entry.getKey();
+            }
+        }
+
+        for (int i = 0; i < observableList.size(); i++){
+            if (observableList.get(i).equals(key)){
+                observableList.set(i, key + " | Answer: " + answer);
+            }
         }
     }
 }
