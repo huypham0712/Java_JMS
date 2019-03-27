@@ -1,3 +1,4 @@
+import com.google.gson.Gson;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -18,17 +19,17 @@ import java.io.IOException;
 import java.util.*;
 
 public class Administrator extends Application {
-    private ObservableList<String> observableList = FXCollections.observableArrayList(new ArrayList<>());
+    private ObservableList<OrderInformation> observableList = FXCollections.observableArrayList(new ArrayList<>());
     private final String DESTINATION_TYPE = "queue";
     private final String RECEIVE_CHANNEL = "askDestination";
-    private final String SEND_CHANNEL = "answerDestination";
+    //private final String SEND_CHANNEL = "answerDestination";
     private MessageConsumer messageConsumer;
     private MessageProducer messageProducer;
     private Session session;
     private Destination destination;
     private Connection connection;
-
-    private Map<String, String> hashMap = new HashMap<>();
+    private Gson gson;
+    private Map<String, OrderInformation> hashMap = new HashMap<>();
     private TextField tfMessage;
 
     private ListView<String> lvMessage;
@@ -41,6 +42,7 @@ public class Administrator extends Application {
         stage.setTitle("Administrator");
         stage.setScene(new Scene(root, 640, 480));
         stage.setResizable(false);
+        gson = new Gson();
         lvMessage = (ListView) root.lookup("#lvMessage");
         tfMessage = (TextField) root.lookup("#tfMessage");
         initService(RECEIVE_CHANNEL, DESTINATION_TYPE);
@@ -55,14 +57,16 @@ public class Administrator extends Application {
                     try {
                         if(message instanceof TextMessage){
                             String messageDetail = ((TextMessage) message).getText();
-                            observableList.add("Question: " + messageDetail);
-                            hashMap.put("Question: " + messageDetail, message.getJMSMessageID());
+                            OrderInformation newData = gson.fromJson(messageDetail, OrderInformation.class);
+                            transformDataToListView(newData, message);
+                            observableList.add(newData);
+                            hashMap.put(newData.getMessageDetail(), newData);
                             Platform.runLater(new Runnable() {
                                 @Override
                                 public void run() {
                                     lvMessage.getItems().clear();
-                                    for (String s : observableList) {
-                                        lvMessage.getItems().add(s);
+                                    for (OrderInformation orderInformation : observableList) {
+                                        lvMessage.getItems().add(orderInformation.getMessageDetail());
                                     }
                                 }
                             });
@@ -95,21 +99,21 @@ public class Administrator extends Application {
                     return;
                 }
 
-                String correlationId = null;
+                OrderInformation order = null;
                 for(Map.Entry entry : hashMap.entrySet()){
                     if (entry.getKey().equals(question)){
-                        correlationId = (String) entry.getValue();
+                        order = (OrderInformation) entry.getValue();
                     }
                 }
 
-                if (replyToQuestion(message, correlationId, SEND_CHANNEL)){
+                if (replyToQuestion(message, order)){
                     tfMessage.clear();
                     Platform.runLater(new Runnable() {
                         @Override
                         public void run() {
                             lvMessage.getItems().clear();
-                            for (String s : observableList) {
-                                lvMessage.getItems().add(s);
+                            for (OrderInformation orderInformation : observableList) {
+                                lvMessage.getItems().add(orderInformation.getMessageDetail());
                             }
                         }
                     });
@@ -119,6 +123,19 @@ public class Administrator extends Application {
             }
         });
         stage.show();
+    }
+
+    private void transformDataToListView(OrderInformation newData, Message message) {
+        try {
+            // Set CorrelationId
+            newData.setCorrelationId(message.getJMSMessageID());
+
+            // Transform message
+            String tmp = newData.getMessageDetail().contains("Question: ") ? newData.getMessageDetail() : "Question: " + newData.getMessageDetail();
+            newData.setMessageDetail(tmp);
+        } catch (JMSException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
@@ -159,25 +176,26 @@ public class Administrator extends Application {
         }
     }
 
-    private boolean replyToQuestion(String message, String correlationId, String sendDestination) {
+    private boolean replyToQuestion(String message, OrderInformation orderInformation) {
         try {
-            initService(sendDestination, DESTINATION_TYPE);
+            initService(orderInformation.getUserReplyDestination(), DESTINATION_TYPE);
 
             // for sending messages
             messageProducer = session.createProducer(null);
 
             // create a text message
-            Message msg = session.createTextMessage(message);
+            String answer = orderInformation.getMessageDetail() + " | Answer: " + message;
+            orderInformation.setMessageDetail(answer);
+            String jsonReply = gson.toJson(orderInformation);
+            Message msg = session.createTextMessage(jsonReply);
 
-            msg.setJMSCorrelationID(correlationId);
+            msg.setJMSCorrelationID(orderInformation.getCorrelationId());
             msg.setJMSReplyTo(destination);
 
             // send the message
             messageProducer.send(msg.getJMSReplyTo(), msg);
 
-            //observableList.add("You: " + message);
-
-            updateList(correlationId, message);
+            updateList(orderInformation.getCorrelationId(), answer);
             return true;
         } catch (JMSException e) {
             e.printStackTrace();
@@ -186,17 +204,19 @@ public class Administrator extends Application {
     }
 
     private void updateList(String correlationId, String answer) {
-        String key = null;
+        OrderInformation orderInformation = null;
 
         for (Map.Entry entry : hashMap.entrySet()){
-            if (entry.getValue().equals(correlationId)){
-                key = (String) entry.getKey();
+            if (((OrderInformation)entry.getValue()).getCorrelationId().equals(correlationId)){
+                orderInformation = (OrderInformation) entry.getValue();
             }
         }
 
         for (int i = 0; i < observableList.size(); i++){
-            if (observableList.get(i).equals(key)){
-                observableList.set(i, key + " | Answer: " + answer);
+            if (observableList.get(i).getCorrelationId().equals(orderInformation.getCorrelationId())){
+                //String tmp = orderInformation.getMessageDetail() + " | Answer: " + answer;
+                orderInformation.setMessageDetail(answer);
+                observableList.set(i, orderInformation);
             }
         }
     }

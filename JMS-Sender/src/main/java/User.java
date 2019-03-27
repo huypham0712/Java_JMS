@@ -21,9 +21,9 @@ import java.io.IOException;
 import java.util.*;
 
 public class User extends Application {
-    private ObservableList<String> observableList = FXCollections.observableArrayList(new ArrayList<>());
+    private ObservableList<OrderInformation> observableList = FXCollections.observableArrayList(new ArrayList<>());
     private final String DESTINATION_TYPE = "queue";
-    private final String RECEIVE_CHANNEL = "answerDestination";
+    private final String RECEIVE_CHANNEL = "answerDestination" + UUID.randomUUID().toString();
     private final String SEND_CHANNEL = "askDestination";
     private MessageConsumer messageConsumer;
     private MessageProducer messageProducer;
@@ -31,8 +31,9 @@ public class User extends Application {
     private Destination destination;
     private Connection connection;
     private Gson gson;
+    private Context jndiContext;
 
-    private Map<String, String> hashMap = new HashMap<>();
+    private Map<String, OrderInformation> hashMap = new HashMap<>();
     private Button btnSend;
     private TextField tfMessage;
     private ListView<String> lvMessage;
@@ -41,8 +42,8 @@ public class User extends Application {
     public void start(Stage stage) throws IOException {
         Parent root = FXMLLoader.load(getClass().getResource("userUI.fxml"));
         stage.setTitle("Sender");
-        stage.setScene(new Scene(root, 640, 480));
-        stage.setResizable(false);
+        stage.setScene(new Scene(root, 1028, 429));
+        stage.setResizable(true);
         gson = new Gson();
         btnSend = (Button) root.lookup("#btnSend");
         tfMessage = (TextField) root.lookup("#tfMessage");
@@ -60,13 +61,15 @@ public class User extends Application {
                 public void onMessage(Message message) {
                     try {
                         if (message instanceof TextMessage){
-                            updateList(message);
+                            String messageDetail = ((TextMessage) message).getText();
+                            OrderInformation newData = gson.fromJson(messageDetail, OrderInformation.class);
+                            updateList(message, newData);
                             Platform.runLater(new Runnable() {
                                 @Override
                                 public void run() {
                                     lvMessage.getItems().clear();
-                                    for (String s : observableList) {
-                                        lvMessage.getItems().add(s);
+                                    for (OrderInformation s : observableList) {
+                                        lvMessage.getItems().add(s.getMessageDetail());
                                     }
                                 }
                             });
@@ -99,8 +102,8 @@ public class User extends Application {
                         @Override
                         public void run() {
                             lvMessage.getItems().clear();
-                            for (String s : observableList) {
-                                lvMessage.getItems().add(s);
+                            for (OrderInformation s : observableList) {
+                                lvMessage.getItems().add(s.getMessageDetail());
                             }
                         }
                     });
@@ -115,18 +118,20 @@ public class User extends Application {
         stage.show();
     }
 
-    private void updateList(Message message) throws JMSException {
-        String key = null;
+    private void updateList(Message message, OrderInformation newData) throws JMSException {
+        OrderInformation orderInformation = null;
 
         for (Map.Entry entry : hashMap.entrySet()){
-            if (entry.getValue().equals(message.getJMSCorrelationID())){
-                key = (String) entry.getKey();
+            if (((OrderInformation)entry.getValue()).getCorrelationId().equals(message.getJMSCorrelationID())){
+                orderInformation = (OrderInformation) entry.getValue();
             }
         }
 
         for (int i = 0; i < observableList.size(); i++){
-            if (observableList.get(i).equals(key)){
-                observableList.set(i, key + " | Answer: " + ((TextMessage)message).getText());
+            if (observableList.get(i).getCorrelationId().equals(orderInformation.getCorrelationId())){
+                //String tmp = newData.getMessageDetail() + " | Answer: " + ((TextMessage)message).getText();
+                orderInformation.setMessageDetail(newData.getMessageDetail());
+                observableList.set(i, orderInformation);
             }
         }
     }
@@ -152,7 +157,7 @@ public class User extends Application {
             // connect to the Destination called “myFirstChannel”
             // queue or topic: “queue.myFirstDestination” or “topic.myFirstDestination”
             props.put((destinationType + "." + targetDestination), targetDestination);
-            Context jndiContext = new InitialContext(props);
+            jndiContext = new InitialContext(props);
             ConnectionFactory connectionFactory = (ConnectionFactory) jndiContext.lookup("ConnectionFactory");
 
             // to connect to the JMS
@@ -170,25 +175,29 @@ public class User extends Application {
 
     private boolean askQuestion(String message, String sendDestination) {
         try {
-
             initService(sendDestination, DESTINATION_TYPE);
 
             // for sending messages
             messageProducer = session.createProducer(null);
 
             // create a text message
-            Message msg = session.createTextMessage(message);
+            OrderInformation orderInformation = new OrderInformation(message, RECEIVE_CHANNEL);
+            orderInformation.setMessageDetail("Question: " + message);
+            String toBeSent = gson.toJson(orderInformation, OrderInformation.class);
+            Message msg = session.createTextMessage(toBeSent);
 
+            destination = (Destination) jndiContext.lookup(SEND_CHANNEL);
             msg.setJMSReplyTo(destination);
 
             // send the message
             messageProducer.send(msg.getJMSReplyTo(), msg);
 
             //questionList.add(message);
-            observableList.add("Question: " + message);
-            hashMap.put("Question: " + message, msg.getJMSMessageID());
+            orderInformation.setCorrelationId(msg.getJMSMessageID());
+            observableList.add(orderInformation);
+            hashMap.put("Question: " + orderInformation.getMessageDetail(), orderInformation);
             return true;
-        } catch (JMSException e) {
+        } catch (NamingException | JMSException e) {
             e.printStackTrace();
             return false;
         }
