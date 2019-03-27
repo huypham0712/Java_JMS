@@ -1,7 +1,6 @@
+import com.google.gson.Gson;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
@@ -18,7 +17,6 @@ import javax.jms.*;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-
 import java.io.IOException;
 import java.util.*;
 
@@ -32,6 +30,7 @@ public class User extends Application {
     private Session session;
     private Destination destination;
     private Connection connection;
+    private Gson gson;
 
     private Map<String, String> hashMap = new HashMap<>();
     private Button btnSend;
@@ -44,6 +43,7 @@ public class User extends Application {
         stage.setTitle("Sender");
         stage.setScene(new Scene(root, 640, 480));
         stage.setResizable(false);
+        gson = new Gson();
         btnSend = (Button) root.lookup("#btnSend");
         tfMessage = (TextField) root.lookup("#tfMessage");
         lvMessage = (ListView<String>) root.lookup("#lvMessage");
@@ -60,7 +60,6 @@ public class User extends Application {
                 public void onMessage(Message message) {
                     try {
                         if (message instanceof TextMessage){
-                            //String messageDetail = ((TextMessage) message).getText();
                             updateList(message);
                             Platform.runLater(new Runnable() {
                                 @Override
@@ -130,11 +129,6 @@ public class User extends Application {
                 observableList.set(i, key + " | Answer: " + ((TextMessage)message).getText());
             }
         }
-    }
-
-    @Override
-    public void init() throws Exception {
-        super.init();
     }
 
     public static void main(String[] args){
